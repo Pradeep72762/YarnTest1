@@ -1,0 +1,55 @@
+name: 'RunCypressTests_GDPR'
+on: 
+  workflow_dispatch:
+    inputs:
+      geolocation:
+        description: 'specify geolocation' 
+        default: 'IN'
+      feature:
+        description: 'feature to be tested' 
+        default: '/**/**/'
+      testcases:
+        description: 'specify test cases' 
+        default: '/*.cy.js'
+
+jobs:
+  ubuntu-job:
+    name: 'BrowserStack Test on Ubuntu'
+    runs-on: ubuntu-latest  # Can be self-hosted runner also
+    steps:
+
+      - name: 'BrowserStack Env Setup'  # Invokes the setup-env action
+        uses: browserstack/github-actions/setup-env@master
+        with:
+          username:  ${{ secrets.BROWSERSTACK_USERNAME }}
+          access-key: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+      - name: 'BrowserStack Local Tunnel Setup'  # Invokes the setup-local action
+        uses: browserstack/github-actions/setup-local@master
+        with:
+          local-testing: start
+          local-identifier: random
+          
+      - name: 'Checkout the repository'
+        uses: actions/checkout@v2
+        with:
+          ref: Demo2
+
+      - name: 'Building web application to be tested'
+        run: yarn
+      - name: 'install browserstack cli'
+        run: yarn global add browserstack-cypress-cli
+        
+
+      - name: 'Running test on BrowserStack'  # Invokes the actual test script that would run on BrowserStack browsers
+        run:  browserstack-cypress run -s 'cypress/e2e/specs/${{ github.event.inputs.feature }}${{ github.event.inputs.testcases }}' # See sample test script above
+        
+      - uses: actions/upload-artifact@v3
+        with:
+          name: Cypress-Browserstack Test Execution Report
+          path: cypress/reports/html
+
+      - name: 'BrowserStackLocal Stop'  # Terminating the BrowserStackLocal tunnel connection
+        uses: browserstack/github-actions/setup-local@master
+        with:
+          local-testing: stop
